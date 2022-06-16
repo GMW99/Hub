@@ -127,10 +127,13 @@ def test_sub_sample_view_save(optimize, idx_subscriptable):
     with pytest.raises(DatasetViewSavingError):
         view.save_view(optimize=optimize)
     ds.commit()
-    view.save_view(optimize=optimize)
+    ds.save_view(optimize=optimize, id="abcd")
+    view.save_view(optimize=optimize, id="abcd")  # test overwrite
     assert len(ds.get_views()) == 1
     view2 = ds.get_views()[0].load()
     np.testing.assert_array_equal(view.x.numpy(), view2.x.numpy())
+    view3 = ds.get_view("abcd").load()
+    np.testing.assert_array_equal(view.x.numpy(), view3.x.numpy())
 
 
 @pytest.mark.parametrize("optimize", [True, False])
@@ -190,7 +193,7 @@ def test_inplace_dataset_view_save(
         f, save_result=stream, num_workers=num_workers, progressbar=progressbar
     )
     assert len(ds.get_views()) == int(stream)
-    vds_path = view.save_view(optimize=optimize)
+    vds_path = view.save_view(optimize=optimize, id="abcd")
     assert len(ds.get_views()) == 1
     view2 = hub.dataset(vds_path)
     if ds.path.startswith("hub://"):
@@ -201,7 +204,7 @@ def test_inplace_dataset_view_save(
             assert ds.path + "/.queries/" in vds_path
     for t in view.tensors:
         np.testing.assert_array_equal(view[t].numpy(), view2[t].numpy())
-    entry = ds.get_views()[0]
+    entry = ds.get_view("abcd")
     assert entry.virtual
     entry.optimize()
     assert not entry.virtual
