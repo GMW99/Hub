@@ -2408,6 +2408,18 @@ class Dataset:
                     return ViewEntry(q, qds, True)
         raise KeyError(f"No view with id {id} found in the dataset.")
 
+    def _delete_all_views(self):
+        with self._lock_queries_json():
+            qjson = self._read_queries_json()
+            if not qjson:
+                return
+            for i, q in enumerate(qjson):
+                    self.base_storage.subdir(
+                        ".queries/" + (q.get("path") or q["id"])
+                    ).clear()
+                    return
+            self._write_queries_json([])
+
     def delete_view(self, id: str):
         try:
             with self._lock_queries_json():
