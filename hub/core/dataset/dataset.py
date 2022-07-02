@@ -2427,7 +2427,6 @@ class Dataset:
                     self.base_storage.subdir(
                         ".queries/" + (q.get("path") or q["id"])
                     ).clear()
-                    return
             self._write_queries_json([])
 
     def delete_view(self, id: str):
