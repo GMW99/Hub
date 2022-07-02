@@ -36,7 +36,7 @@ from hub.util.keys import (
     get_sample_shape_tensor_key,
 )
 from hub.util.modified import get_modified_indexes
-from hub.util.numeric_to_text import numeric_to_text
+from hub.util.class_label import convert_to_text
 from hub.util.shape_interval import ShapeInterval
 from hub.util.exceptions import (
     TensorDoesNotExistError,
@@ -246,11 +246,15 @@ class Tensor:
         else:
             self.chunk_engine = ChunkEngine(self.key, self.storage, self.version_state)
 
-        if not self.is_iteration:
+        if not self.pad_tensor and not self.is_iteration:
             self.index.validate(self.num_samples)
 
         # An optimization to skip multiple .numpy() calls when performing inplace ops on slices:
         self._skip_next_setitem = False
+
+    @property
+    def pad_tensor(self):
+        return self.dataset._pad_tensors
 
     def _write_initialization(self):
         self.storage.check_readonly()
@@ -615,6 +619,10 @@ class Tensor:
             and isinstance(item, int)
             and item >= self.num_samples
         ):
+            if self.is_sequence:
+                raise NotImplementedError(
+                    "Random assignment is not supported for sequences yet."
+                )
             num_samples_to_pad = item - self.num_samples
             append_link_callback = self._append_to_links if self.meta.links else None
 
@@ -662,7 +670,10 @@ class Tensor:
             A numpy array containing the data represented by this tensor.
         """
         return self.chunk_engine.numpy(
-            self.index, aslist=aslist, fetch_chunks=fetch_chunks
+            self.index,
+            aslist=aslist,
+            fetch_chunks=fetch_chunks,
+            pad_tensor=self.pad_tensor,
         )
 
     def summary(self):
@@ -773,7 +784,7 @@ class Tensor:
             data = {"numeric": labels}
             class_names = self.info.class_names
             if class_names:
-                data["text"] = numeric_to_text(labels, self.info.class_names)
+                data["text"] = convert_to_text(labels, self.info.class_names)
             return data
         else:
             return self.numpy(aslist=aslist)
@@ -798,10 +809,6 @@ class Tensor:
         if self.is_link:
             return self.chunk_engine.get_hub_read_sample(idx).buffer  # type: ignore
         return self.chunk_engine.read_bytes_for_sample(idx)  # type: ignore
-
-    def _pop(self):
-        self.chunk_engine._pop()
-        [self.dataset[link]._pop() for link in self.meta.links]
 
     def _append_to_links(self, sample, flat: Optional[bool]):
         for k, v in self.meta.links.items():
@@ -939,6 +946,14 @@ class Tensor:
             )
         else:
             webbrowser.open(self._get_video_stream_url())
+
+    @invalid_view_op
+    def pop(self, index: Optional[int] = None):
+        """Removes an element at the given index."""
+        if index is None:
+            index = self.num_samples - 1
+        self.chunk_engine.pop(index)
+        [self.dataset[link].pop(index) for link in self.meta.links]
 
     @property
     def timestamp(self) -> np.ndarray:
