@@ -102,7 +102,7 @@ if hub_user is not None:
 
 
 def feature_report_path(
-    path: str, feature_name: str, parameters: dict, starts_with: str = "hub://"
+    path: str, feature_name: str, parameters: dict, starts_with: str = "hub://", hub_reporter: HumbugReporter = None
 ):
     """Helper function for generating humbug feature reports depending on the path"""
     if not isinstance(path, str):

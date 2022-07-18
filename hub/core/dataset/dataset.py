@@ -2,6 +2,7 @@
 import os
 import uuid
 import sys
+from hub.client.client import HubBackendClient
 from hub.core.index.index import IndexEntry
 import numpy as np
 from time import time
@@ -171,6 +172,16 @@ class Dataset:
             LockedException: If read_only is False but the dataset is locked for writing by another machine.
             ReadOnlyModeError: If read_only is False but write access is not available.
         """
+        self.hub_reporter = HumbugReporter(
+            name="activeloopai/Hub",
+            consent=consent,
+            client_id=client_id,
+            session_id=session_id,
+            bugout_token=BUGOUT_TOKEN,
+            tags=[],
+        )
+        username = get_user_name(token)
+        self.hub_reporter.tags.append(f"username:{username}")
         d: Dict[str, Any] = {}
         d["_client"] = d["org_id"] = d["ds_name"] = None
         # uniquely identifies dataset
@@ -374,7 +385,7 @@ class Dataset:
         return ret
 
     @invalid_view_op
-    @hub_reporter.record_call
+    @self.hub_reporter.record_call
     def create_tensor(
         self,
         name: str,

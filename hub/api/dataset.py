@@ -107,6 +107,7 @@ class dataset:
         Raises:
             AgreementError: When agreement is rejected
         """
+        # create reporter object inside and pass it to feature_report_path
         access_method, num_workers, scheduler = parse_access_method(access_method)
         check_access_method(access_method, overwrite)
         path = convert_pathlib_to_string_if_needed(path)

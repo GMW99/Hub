@@ -2,6 +2,7 @@ import os
 import json
 import requests
 from pathlib import Path
+from hub.client.client import HubBackendClient
 
 
 from hub.client.config import (
@@ -100,12 +101,17 @@ def check_response_status(response: requests.Response):
         raise UnexpectedStatusCodeException(message)
 
 
-def get_user_name() -> str:
+def get_user_name(token=None) -> str:
     """Returns the name of the user currently logged into Hub."""
-    path = REPORTING_CONFIG_FILE_PATH
-    try:
-        with open(path, "r") as f:
-            d = json.load(f)
-            return d["username"]
-    except (FileNotFoundError, KeyError):
-        return "public"
+    if token:
+        client = HubBackendClient(token=token)
+        return client.get_user_name()
+        # retrieve username here
+    else:
+        path = REPORTING_CONFIG_FILE_PATH
+        try:
+            with open(path, "r") as f:
+                d = json.load(f)
+                return d["username"]
+        except (FileNotFoundError, KeyError):
+            return "public"
