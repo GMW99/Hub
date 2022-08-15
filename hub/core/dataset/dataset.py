@@ -2,19 +2,24 @@
 import os
 import uuid
 import sys
-from hub.core.index.index import IndexEntry
-from time import time
 import json
-from tqdm import tqdm  # type: ignore
-import pathlib
 import posixpath
-
+import warnings
+from collections import Iterable
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 from functools import partial
+from itertools import chain
+
+import jwt
+import pathlib
+import numpy as np
+from time import time
+from tqdm import tqdm  # type: ignore
+
 import hub
+from hub.core.index.index import IndexEntry
 from hub.core.link_creds import LinkCreds
 from hub.util.invalid_view_op import invalid_view_op
-import numpy as np
 from hub.api.info import load_info
 from hub.client.log import logger
 from hub.constants import (
@@ -36,7 +41,6 @@ from hub.core.storage import (
     MemoryProvider,
 )
 from hub.core.tensor import Tensor, create_tensor, delete_tensor
-
 from hub.core.version_control.commit_node import CommitNode  # type: ignore
 from hub.core.version_control.dataset_diff import load_dataset_diff
 from hub.htype import (
@@ -114,9 +118,6 @@ from hub.util.version_control import (
 from hub.util.pretty_print import summary_dataset
 from hub.core.dataset.view_entry import ViewEntry
 from hub.client.utils import get_user_name
-from itertools import chain
-import warnings
-import jwt
 
 
 _LOCKABLE_STORAGES = {S3Provider, GCSProvider}
@@ -1986,6 +1987,13 @@ class Dataset:
         """
         if isinstance(sample, Dataset):
             sample = sample.tensors
+        if not isinstance(sample, Iterable) or (
+            isinstance(sample, Iterable) and not isinstance(sample, dict)
+        ):
+            raise Exception(
+                """Can not append sample because tensor name is not specified. If you want to append sample you need to either specify the tensor name and append sample as a dictionary, like: `ds.append({"tensor_name": sample})` or you need to call tensor method from the dataset like: `ds.tensor_name.append(sample)`"""
+            )
+
         if not skip_ok:
             for k in self.tensors:
                 if k not in sample:
